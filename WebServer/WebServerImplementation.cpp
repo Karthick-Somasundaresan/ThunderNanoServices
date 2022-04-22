@@ -33,7 +33,34 @@ namespace Plugin {
             RUNNING
         };
         class ChannelMap;
+        class NotificationSink : public Core::Thread {
+            public:
+                NotificationSink() = delete;
+                NotificationSink(const NotificationSink&) = delete;
+                NotificationSink& operator= (const NotificationSink&) = delete;
+                NotificationSink(WebServerImplementation& parent):_parent(parent) {
+                }
+                ~NotificationSink() {
+                    Stop();
+                    Wait(Thread::STOPPED| Thread::BLOCKED, Core::infinite);
+                }
+                void RequestForStateChange(PluginHost::IStateControl::command command) {
 
+                    _command = command;
+                    Run();
+                }
+            public:
+                uint32_t Worker() override {
+                    if (IsRunning() == true) {
+                        _parent.RequestForStateChange(_command);
+                    }
+                    Block();
+                    return (Core::infinite);
+                }
+            private:
+                WebServerImplementation& _parent;
+                PluginHost::IStateControl::command _command;
+        };
         class WebFlow {
         public:
             WebFlow(const WebFlow& a_Copy) = delete;
@@ -539,7 +566,7 @@ POP_WARNING()
                     _prefixPath.clear();
                 }
                 else if (configuration.Path.Value()[0] == '/') {
-                        _prefixPath = Core::Directory::Normalize(configuration.Path.Value());
+                    _prefixPath = Core::Directory::Normalize(configuration.Path.Value());
                 }
                 else {
                     _prefixPath = prefixPath + Core::Directory::Normalize(configuration.Path.Value());
@@ -667,36 +694,84 @@ POP_WARNING()
         WebServerImplementation& operator=(const WebServerImplementation&) = delete;
 
         WebServerImplementation()
-            : _channelServer()
+            : _channelServer(Core::ProxyType<ChannelMap>::Create())
+            , _adminLock()
             , _observers()
+            , _state(PluginHost::IStateControl::UNINITIALIZED)
+            , _sink(*this)
+            , _config()
+            , _dataPath()
         {
         }
 
-        ~WebServerImplementation() override = default;
+        ~WebServerImplementation() override {
+            for (auto & observer: _observers){
+                Unregister(observer);
+            }
+        }
 
         uint32_t Configure(PluginHost::IShell* service) override
         {
             ASSERT(service != nullptr);
-
-            Config config;
-            config.FromString(service->ConfigLine());
-
-            uint32_t result(_channelServer.Configure(service->DataPath(), config));
-
-            if (result == Core::ERROR_NONE) {
-
-                result = _channelServer.Open(2000);
-            }
-
+            _config.FromString(service->ConfigLine());
+            _dataPath = service->DataPath();
+            uint32_t result = _channelServer->Configure(_dataPath, _config);
             return (result);
         }
         PluginHost::IStateControl::state State() const override
         {
-            return (PluginHost::IStateControl::RESUMED);
+            PluginHost::IStateControl::state state;
+            _adminLock.Lock();
+            state = _state;
+            _adminLock.Unlock();
+            return state;
         }
-        uint32_t Request(const PluginHost::IStateControl::command) override
+
+
+        void RequestForStateChange(const PluginHost::IStateControl::command command) {
+            bool stateChanged = false;
+            uint32_t result = Core::ERROR_NONE;
+            _adminLock.Lock();
+            if(command == PluginHost::IStateControl::RESUME ) {
+                if ((_state == PluginHost::IStateControl::UNINITIALIZED || _state == PluginHost::IStateControl::SUSPENDED)) {
+                    if(_channelServer.IsValid() == false){
+                        _channelServer = Core::ProxyType<ChannelMap>::Create();
+                        result = _channelServer->Configure(_dataPath, _config);
+                    }
+                    if (result == Core::ERROR_NONE){
+                        result = _channelServer->Open(2000);
+                        if (result == Core::ERROR_NONE) {
+                            _state = PluginHost::IStateControl::RESUMED;
+                            stateChanged = true;
+                        }
+                    }
+                }
+            } else {
+                if(_state == PluginHost::IStateControl::RESUMED || _state == PluginHost::IStateControl::UNINITIALIZED ) {
+                    if( _channelServer.IsValid() == true) {
+                        _channelServer.Release();
+                    }
+                    stateChanged = true;
+                    _state = PluginHost::IStateControl::SUSPENDED;
+                }
+            }
+            if(stateChanged) {
+                for(auto& observer: _observers) {
+                    observer->StateChange(_state);
+                }
+            }
+            _adminLock.Unlock();
+        }
+
+        uint32_t Request(const PluginHost::IStateControl::command command) override
         {
-            // No state can be set, we can only move from ININITIALIZED to RUN...
+            if (_state == PluginHost::IStateControl::UNINITIALIZED || 
+                (_state == PluginHost::IStateControl::RESUMED && command == PluginHost::IStateControl::SUSPEND) ||
+                (_state == PluginHost::IStateControl::SUSPENDED && command == PluginHost::IStateControl::RESUME)){
+                _adminLock.Lock();
+                _sink.RequestForStateChange(command);
+                _adminLock.Unlock();
+            }
             return (Core::ERROR_NONE);
         }
 
@@ -727,15 +802,15 @@ POP_WARNING()
         }
         void AddProxy(const string& path, const string& subst, const string& address) override
         {
-            _channelServer.AddProxy(path, subst, address);
+            _channelServer->AddProxy(path, subst, address);
         }
         void RemoveProxy(const string& path) override
         {
-            _channelServer.RemoveProxy(path);
+            _channelServer->RemoveProxy(path);
         }
         string Accessor() const override
         {
-            return (_channelServer.Accessor());
+            return (_channelServer->Accessor());
         }
 
         BEGIN_INTERFACE_MAP(WebServerImplementation)
@@ -744,8 +819,14 @@ POP_WARNING()
         END_INTERFACE_MAP
 
     private:
-        ChannelMap _channelServer;
+        Core::ProxyType<ChannelMap> _channelServer;
+        mutable Core::CriticalSection _adminLock;
         std::list<PluginHost::IStateControl::INotification*> _observers;
+        PluginHost::IStateControl::state _state;
+        NotificationSink _sink;
+        Config _config;
+        string _dataPath;
+
     };
 
     SERVICE_REGISTRATION(WebServerImplementation, 1, 0);
