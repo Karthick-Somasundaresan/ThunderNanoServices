@@ -538,6 +538,11 @@ PUSH_WARNING(DISABLE_WARNING_THIS_IN_MEMBER_INITIALIZER_LIST)
 POP_WARNING()
             ~ChannelMap()
             {
+                CloseAndCleanupConnections();
+            }
+
+        public:
+            void CloseAndCleanupConnections() {
                 // Start by closing the server thread..
                 Core::SocketServerType<IncomingChannel>::Close(1000);
 
@@ -553,8 +558,6 @@ POP_WARNING()
                 // Cleanup the closed sockets we created..
                 Cleanup();
             }
-
-        public:
             uint32_t Configure(const string& prefixPath, const Config& configuration)
             {
                 Core::NodeId accessor;
@@ -694,7 +697,7 @@ POP_WARNING()
         WebServerImplementation& operator=(const WebServerImplementation&) = delete;
 
         WebServerImplementation()
-            : _channelServer(Core::ProxyType<ChannelMap>::Create())
+            : _channelServer()
             , _adminLock()
             , _observers()
             , _state(PluginHost::IStateControl::UNINITIALIZED)
@@ -715,7 +718,7 @@ POP_WARNING()
             ASSERT(service != nullptr);
             _config.FromString(service->ConfigLine());
             _dataPath = service->DataPath();
-            uint32_t result = _channelServer->Configure(_dataPath, _config);
+            uint32_t result = _channelServer.Configure(_dataPath, _config);
             return (result);
         }
         PluginHost::IStateControl::state State() const override
@@ -734,23 +737,15 @@ POP_WARNING()
             _adminLock.Lock();
             if(command == PluginHost::IStateControl::RESUME ) {
                 if ((_state == PluginHost::IStateControl::UNINITIALIZED || _state == PluginHost::IStateControl::SUSPENDED)) {
-                    if(_channelServer.IsValid() == false){
-                        _channelServer = Core::ProxyType<ChannelMap>::Create();
-                        result = _channelServer->Configure(_dataPath, _config);
-                    }
-                    if (result == Core::ERROR_NONE){
-                        result = _channelServer->Open(2000);
-                        if (result == Core::ERROR_NONE) {
-                            _state = PluginHost::IStateControl::RESUMED;
-                            stateChanged = true;
-                        }
+                    result = _channelServer.Open(2000);
+                    if ( result == Core::ERROR_NONE) {
+                        stateChanged = true;
+                        _state = PluginHost::IStateControl::RESUMED;
                     }
                 }
             } else {
                 if(_state == PluginHost::IStateControl::RESUMED || _state == PluginHost::IStateControl::UNINITIALIZED ) {
-                    if( _channelServer.IsValid() == true) {
-                        _channelServer.Release();
-                    }
+                    _channelServer.CloseAndCleanupConnections();
                     stateChanged = true;
                     _state = PluginHost::IStateControl::SUSPENDED;
                 }
@@ -802,15 +797,15 @@ POP_WARNING()
         }
         void AddProxy(const string& path, const string& subst, const string& address) override
         {
-            _channelServer->AddProxy(path, subst, address);
+            _channelServer.AddProxy(path, subst, address);
         }
         void RemoveProxy(const string& path) override
         {
-            _channelServer->RemoveProxy(path);
+            _channelServer.RemoveProxy(path);
         }
         string Accessor() const override
         {
-            return (_channelServer->Accessor());
+            return (_channelServer.Accessor());
         }
 
         BEGIN_INTERFACE_MAP(WebServerImplementation)
@@ -819,7 +814,7 @@ POP_WARNING()
         END_INTERFACE_MAP
 
     private:
-        Core::ProxyType<ChannelMap> _channelServer;
+        ChannelMap _channelServer;
         mutable Core::CriticalSection _adminLock;
         std::list<PluginHost::IStateControl::INotification*> _observers;
         PluginHost::IStateControl::state _state;
