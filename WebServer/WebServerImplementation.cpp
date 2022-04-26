@@ -702,8 +702,6 @@ POP_WARNING()
             , _observers()
             , _state(PluginHost::IStateControl::UNINITIALIZED)
             , _sink(*this)
-            , _config()
-            , _dataPath()
         {
         }
 
@@ -716,9 +714,9 @@ POP_WARNING()
         uint32_t Configure(PluginHost::IShell* service) override
         {
             ASSERT(service != nullptr);
-            _config.FromString(service->ConfigLine());
-            _dataPath = service->DataPath();
-            uint32_t result = _channelServer.Configure(_dataPath, _config);
+            Config config;
+            config.FromString(service->ConfigLine());
+            uint32_t result = _channelServer.Configure(service->DataPath(), config);
             return (result);
         }
         PluginHost::IStateControl::state State() const override
@@ -819,8 +817,6 @@ POP_WARNING()
         std::list<PluginHost::IStateControl::INotification*> _observers;
         PluginHost::IStateControl::state _state;
         NotificationSink _sink;
-        Config _config;
-        string _dataPath;
 
     };
 
