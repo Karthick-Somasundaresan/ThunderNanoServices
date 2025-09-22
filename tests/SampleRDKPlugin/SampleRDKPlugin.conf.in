@@ -1,0 +1,8 @@
+startmode = "@PLUGIN_SAMPLERDKPLUGIN_STARTMODE@"
+configuration = JSON()
+root = JSON()
+root.add("mode", "@PLUGIN_SAMPLERDKPLUGIN_MODE@")
+root.add("user", "@PLUGIN_SAMPLERDKPLUGIN_USER@")
+root.add("group", "@PLUGIN_SAMPLERDKPLUGIN_GROUP@")
+
+configuration.add("root", root)

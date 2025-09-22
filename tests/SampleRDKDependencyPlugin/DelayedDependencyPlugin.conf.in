@@ -1,0 +1,10 @@
+startmode = "@PLUGIN_SAMPLERDKDEPENDENCYPLUGIN_STARTMODE@"
+configuration = JSON()
+root = JSON()
+root.add("mode", "@PLUGIN_SAMPLERDKDEPENDENCYPLUGIN_MODE@")
+root.add("user", "@PLUGIN_SAMPLERDKDEPENDENCYPLUGIN_USER@")
+root.add("locator", "lib@PLUGIN_SAMPLERDKDEPENDENCYPLUGIN_IMPLEMENTATION@.so")
+root.add("group", "@PLUGIN_SAMPLERDKDEPENDENCYPLUGIN_GROUP@")
+
+configuration.add("root", root)
+configuration.add("propertyresponsedelay", 1000)

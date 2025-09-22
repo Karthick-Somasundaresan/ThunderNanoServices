@@ -1,0 +1,13 @@
+{
+  "$schema": "plugin.schema.json",
+  "info": {
+    "title": "SampleRDKPlugin Plugin",
+    "callsign": "SampleRDKPlugin",
+    "locator": "libWPEFrameworkSampleRDKPlugin.so",
+    "status": "alpha",
+    "version": "1.0"
+  },
+  "interface": {
+    "$ref": "interfaces/ISampleRDKPlugin.h"
+  }
+}

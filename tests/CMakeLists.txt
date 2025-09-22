@@ -25,7 +25,20 @@ project_version(1.0.0)
 message("Setup ${PROJECT_NAME} v${PROJECT_VERSION}")
 
 option(STORE_TEST "Utility to verify PersistentStore and Dictionary Plugin behaviour." OFF)
+option(TEST_PLUGIN_SAMPLERDKPLUGIN "Include SampleRDKPlugin plugin" OFF)
+option(TEST_PLUGIN_SUBSYSTEMCONTROLLER "Include Subsystem controller plugin" OFF)
+
 
 if(STORE_TEST)
     add_subdirectory(StoreTest)
 endif()
+if(TEST_PLUGIN_SAMPLERDKPLUGIN)
+    add_subdirectory(SampleRDKDependencyPlugin)
+    add_subdirectory(SampleRDKPlugin)
+endif()
+
+if(TEST_PLUGIN_SUBSYSTEMCONTROLLER)
+    add_subdirectory(SubsystemController)
+    add_subdirectory(SubsysDependentPlugin)
+endif()
+

@@ -1,0 +1,13 @@
+{
+  "$schema": "plugin.schema.json",
+  "info": {
+    "title": "SubsystemController Plugin",
+    "callsign": "SubsystemController",
+    "locator": "libWPEFrameworkSubsystemController.so",
+    "status": "alpha",
+    "version": "1.0"
+  },
+  "interface": {
+    "$ref": "interfaces/ISubsystemController.h"
+  }
+}

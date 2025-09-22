@@ -1,0 +1,8 @@
+startmode = "@PLUGIN_SUBSYSDEPENDENTPLUGIN_STARTMODE@"
+configuration = JSON()
+root = JSON()
+root.add("mode", "@PLUGIN_SUBSYSDEPENDENTPLUGIN_MODE@")
+root.add("user", "@PLUGIN_SUBSYSDEPENDENTPLUGIN_USER@")
+root.add("group", "@PLUGIN_SUBSYSDEPENDENTPLUGIN_GROUP@")
+
+configuration.add("root", root)

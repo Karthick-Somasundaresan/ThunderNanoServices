@@ -102,11 +102,11 @@ POP_WARNING()
         public:
             void Activated(const string&, PluginHost::IShell* service) override
             {
-                Exchange::ITimeSync* time = service->QueryInterface<Exchange::ITimeSync>();
+                /*Exchange::ITimeSync* time = service->QueryInterface<Exchange::ITimeSync>();
                 if (time != nullptr) {
                     TRACE(Trace::Information, (_T("Time interface supported")));
                     time->Release();
-                }
+                }*/
             }
             void Deactivated(const string&, PluginHost::IShell*) override
             {

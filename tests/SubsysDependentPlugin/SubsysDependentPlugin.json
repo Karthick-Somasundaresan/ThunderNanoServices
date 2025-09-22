@@ -1,0 +1,13 @@
+{
+  "$schema": "plugin.schema.json",
+  "info": {
+    "title": "SubsysDependentPlugin Plugin",
+    "callsign": "SubsysDependentPlugin",
+    "locator": "libWPEFrameworkSubsysDependentPlugin.so",
+    "status": "alpha",
+    "version": "1.0"
+  },
+  "interface": {
+    "$ref": "interfaces/ISubsysDependentPlugin.h"
+  }
+}
